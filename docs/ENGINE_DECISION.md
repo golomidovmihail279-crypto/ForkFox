@@ -1,76 +1,78 @@
 # Engine decision record
 
-Status: **provisional selection — validate with a working prototype and measurements**
+Status: **revised direction — Firefox/Gecko source fork; prototype and footprint validation required**
 
 Date: 2026-11-27
 
-## Decision
+## User requirement
 
-Use **Microsoft Edge WebView2 Evergreen Runtime** as the first implementation candidate, hosted inside a small native Windows 11 x64 application.
+ForkFox must not be based on Microsoft browser technology. Microsoft Edge, WebView2, and CEF are excluded.
 
-This is a pragmatic choice for a Windows-only browser. It is not a claim that WebView2 or Chromium is the lightest engine in every workload. The project must measure the actual baseline before treating the engine choice as final.
+The target operating system remains Windows 11 x64. A Windows desktop program necessarily uses operating-system interfaces for windows, input, files, networking, and graphics. The independence requirement applies to the browser engine/runtime and browser platform, not to the host operating system.
 
-## Why WebView2 is the leading candidate
+## Selected direction: Firefox source-code fork (Gecko)
 
-- Microsoft provides a supported native embedding control for Windows applications.
-- Windows 11 includes the Evergreen WebView2 Runtime on supported installations.
-- Evergreen apps share the installed runtime, and Microsoft documents memory, performance, and disk-footprint benefits from runtime sharing/hard-linking on eligible systems.
-- The runtime updates on Microsoft's Edge release cadence, reducing the need for ForkFox to package and maintain its own Chromium runtime.
-- The host can keep browser chrome (tabs, toolbar, settings) native and use WebView2 for website rendering.
+Use Mozilla's maintained Firefox source tree as the browser-engine and application-platform foundation, then create a ForkFox-branded browser experience and remove or disable features that are not needed, where this can be done safely.
+
+This is not the same as embedding Gecko using old XULRunner or legacy Gecko SDK components. Those older embedding paths are not a sound foundation for a new modern browser. Mozilla's supported GeckoView product is focused on Android; for Windows desktop the practical maintained route is to work from the full Firefox source codebase.
 
 Official sources:
-- https://learn.microsoft.com/en-us/microsoft-edge/webview2/
-- https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
-- https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/evergreen-vs-fixed-version
-- https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/process-model
+- Firefox source and contributor documentation: https://firefox-source-docs.mozilla.org/
+- Windows build guide: https://firefox-source-docs.mozilla.org/setup/windows_build.html
+- Supported build hosts and targets: https://firefox-source-docs.mozilla.org/contributing/build/supported.html
+- Mozilla Firefox source repository: https://github.com/mozilla-firefox/firefox
+- GeckoView project: https://mozilla.github.io/geckoview/
 
-## Alternatives considered
+## Why this direction
 
-### Gecko / GeckoView
+- Avoids Microsoft Edge / WebView2 as the rendering engine.
+- Uses Gecko, not Chromium/Blink.
+- Starts from an actively maintained browser codebase with an established security-update process.
+- Provides a realistic route to modern website compatibility, profiles, downloads, media, and browser security.
+- Allows ForkFox-specific UI and gaming-oriented behavior to be developed without inventing a web engine.
 
-Gecko is not selected for the Windows desktop prototype. Mozilla's maintained GeckoView embedding product is aimed at Android. Search results did not identify a current, supported general-purpose Gecko embedding API for Windows desktop apps. Building a full desktop browser around Gecko would likely mean maintaining a much larger Firefox-derived application rather than embedding a small control.
+## Important costs and risks
 
-Sources:
-- https://mozilla.github.io/geckoview/
-- https://github.com/mozilla/geckoview
-- https://github.com/mozilla/qbrt/issues/182
+- Firefox is a large, complex codebase. A custom build and branding effort is substantially harder than writing a small native wrapper.
+- Building Firefox on Windows requires Mozilla's build environment and supported compiler/toolchain. The build is resource- and disk-intensive.
+- Stripping Firefox features can break site compatibility, security, accessibility, or updates. Remove only measured, understood components.
+- Forking creates an ongoing obligation to merge upstream security and compatibility updates.
+- A Gecko-based browser is not guaranteed to use less RAM than WebView2 or Edge. This must be measured; no memory promise is made yet.
+- Mozilla's old Gecko embedding and XULRunner documentation is archived/legacy and must not be used as the main integration plan.
+
+## Alternatives explicitly rejected
+
+### Microsoft Edge WebView2
+
+Rejected because it depends on the Microsoft Edge WebView2 Runtime.
 
 ### Chromium Embedded Framework (CEF)
 
-CEF is a real and mature embedding framework, but it brings Chromium binaries and resources with the application and uses Chromium's multi-process model. That increases distribution and update responsibility compared with using the shared Evergreen runtime already available on Windows 11. CEF remains a fallback if WebView2 lacks a required browser capability.
+Rejected because it is Chromium-based and does not meet the requirement to avoid that browser platform/runtime.
 
-Sources:
-- https://github.com/chromiumembedded/cef
-- https://chromiumembedded.github.io/cef/architecture
-- https://chromiumembedded.github.io/cef/general_usage
+### Legacy Gecko embedding / XULRunner
 
-### Other engines
+Rejected as the main plan because the available embedding material is old and not a current supported desktop embedding product.
 
-Servo and small commercial/experimental engines are not selected for the first version. A lightweight engine is not useful if it cannot reliably run modern sites, support required web APIs, receive security fixes, and be embedded and maintained on Windows.
+### Building a browser engine from zero
 
-## Important caveats
+Not viable for this project's scope. A modern secure engine requires years of engineering, standards work, sandboxing, JavaScript runtime, graphics, media, networking, accessibility, and continuous security maintenance.
 
-- WebView2 uses Chromium's multi-process architecture. A single browser window can involve browser, renderer, GPU, and utility processes.
-- The host application can be small while the web engine still has a meaningful baseline memory footprint.
-- A tab's website, scripts, media, and number of renderer processes can dominate memory use.
-- CPU affinity or a displayed logical-core count is not the same as a reliable CPU usage limit. This feature needs a separate feasibility test; the UI must not promise exact per-core confinement if Windows/WebView2 cannot enforce it safely.
-- Strong ad/tracker blocking, per-profile isolation, password storage, crash recovery, and safe updates all need prototype validation.
+## Required measurements
 
-## Required benchmark before locking the engine
+Before claiming ForkFox is lightweight, benchmark the custom build against current Firefox on the same Windows 11 x64 machine:
 
-Record results on a clean Windows 11 x64 machine with the same runtime version and test conditions:
-
-1. Cold launch to first usable window.
-2. Idle for 2 minutes with one blank/new-tab page.
-3. One lightweight site after settling.
+1. Cold launch to usable window.
+2. Idle for 2 minutes on a blank/new-tab page.
+3. One lightweight website after settling.
 4. Five tabs across different origins.
 5. YouTube idle and video playback.
 6. Browser minimized for 5 minutes.
 7. Game running while ForkFox is open.
-8. Close tabs and measure whether memory is reclaimed.
+8. Close tabs and measure memory reclamation.
 
-Record total ForkFox + WebView2 working set/private bytes, process count, CPU average and peak, launch time, and test-machine details. Compare against Edge using the same pages. No numeric RAM promise is made until these measurements exist.
+Record total process-tree working set/private bytes, process count, CPU average and peak, launch time, build revision, and test-machine details.
 
 ## Exit criteria
 
-Keep WebView2 only if it meets the project's compatibility, security, and measured resource targets. If it does not, investigate a different embedding strategy before adding product features.
+Continue with Gecko only if we can maintain upstream security updates and the measured resource use is acceptable. If we cannot maintain secure upstream updates, a custom browser fork is not safe to ship.
