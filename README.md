@@ -1,29 +1,31 @@
 # ForkFox
 
-A new, lightweight desktop browser for Windows 11 x64, designed with gaming workloads in mind.
+An independent browser project for Windows 11 x64, designed with gaming workloads in mind.
 
 ## Project status
 
-**Early architecture / foundation stage.** This repository starts from a clean slate. No code or design is being carried over from the previous ForkFox project.
+**Early architecture stage.** ForkFox starts from a clean slate. No code or architecture from the previous ForkFox project is being reused.
+
+## Independence
+
+ForkFox will not use Microsoft Edge, WebView2, or CEF as its browser engine/runtime. The current engine direction is a Firefox/Gecko-based source fork with a custom ForkFox browser experience.
+
+Because Windows 11 is the target operating system, the application will still use Windows system APIs for normal desktop integration. This does not make it an Edge-based browser.
 
 ## Product priorities
 
-1. Keep idle RAM and CPU use as low as practical.
-2. Preserve compatibility with modern websites.
-3. Keep browser UI and background services minimal.
-4. Provide optional gaming optimizations without making normal browsing depend on them.
-5. Store profile data locally and protect passwords and backups with encryption.
+1. Minimize idle RAM and CPU use without breaking modern websites.
+2. Maintain a secure, regularly updated browser engine.
+3. Keep the browser UI and background services minimal.
+4. Keep gaming optimizations optional; low-overhead behavior is always active.
+5. Store profile data locally and encrypt passwords and backups.
 
-## Platform
+## Engine direction
 
-- Windows 11 x64 only.
+The project will investigate a **Firefox source-code fork (Gecko)** rather than embedding an obsolete standalone Gecko control. Mozilla's old embedding/XULRunner documentation is not a suitable foundation for a modern browser. Building from Firefox source is more demanding, but it follows a maintained browser codebase.
 
-## Initial engine decision
-
-The current implementation candidate is **Microsoft Edge WebView2 Evergreen Runtime**, hosted by a small native Windows application. This is a practical embedding choice, not a claim that Chromium has the lowest possible memory use. Its shared, automatically updated runtime avoids bundling a second full browser engine with ForkFox. Actual idle and workload measurements will determine whether this choice meets the project's resource goals.
-
-See [docs/ENGINE_DECISION.md](docs/ENGINE_DECISION.md) and [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md).
+See [docs/ENGINE_DECISION.md](docs/ENGINE_DECISION.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Build policy
 
-GitHub Actions are intentionally not enabled during early development. They will only be considered for a final Windows installer/EXE build after explicit approval.
+GitHub Actions are intentionally not enabled during development. They will only be considered for a final Windows installer/EXE build after explicit approval.
