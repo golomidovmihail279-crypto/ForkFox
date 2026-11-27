@@ -76,7 +76,7 @@ if (Test-Path $vswhere) {
             }
 
             $requiredVs = & $vswhere -all -products '*' -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.ATLMFC -property installationPath 2>$null
-            $requiredVs2026 = @($requiredVs | Where-Object { $path = $_; $vs2026 | Where-Object { $_.installationPath -eq $path } })
+            $requiredVs2026 = @($requiredVs | Where-Object { $vs2026.installationPath -contains $_ })
             if ($requiredVs2026.Count -gt 0) {
                 Add-Check 'Visual Studio C++ workload + MFC/ATL' 'PASS' ($requiredVs2026 -join '; ')
             } else {
