@@ -8,9 +8,9 @@ An independent browser project for Windows 11 x64, designed with gaming workload
 
 ## Independence
 
-ForkFox will not use Microsoft Edge, WebView2, or CEF as its browser engine/runtime. The current engine direction is a Firefox/Gecko-based source fork with a custom ForkFox browser experience.
+ForkFox will be its own browser product: its own name, interface, settings, defaults, profile experience, and gaming-oriented features, built on the open-source Chromium browser platform.
 
-Because Windows 11 is the target operating system, the application will still use Windows system APIs for normal desktop integration. This does not make it an Edge-based browser.
+The engine direction is a **direct Chromium source fork**, using Chromium's browser/content platform rather than Microsoft Edge, WebView2, Electron, or a prebuilt browser shell. Chromium is an open-source project and is not owned by Microsoft. Windows 11 system APIs will still be used for normal desktop integration.
 
 ## Product priorities
 
@@ -22,7 +22,9 @@ Because Windows 11 is the target operating system, the application will still us
 
 ## Engine direction
 
-The project will investigate a **Firefox source-code fork (Gecko)** rather than embedding an obsolete standalone Gecko control. Mozilla's old embedding/XULRunner documentation is not a suitable foundation for a modern browser. Building from Firefox source is more demanding, but it follows a maintained browser codebase.
+Use the Chromium source tree as the maintained engine and browser-platform foundation, then develop the ForkFox browser experience as a separate branded product. Reuse engine and security infrastructure; do not copy Chrome's product design or add Google-only services by default.
+
+A direct Chromium fork provides more control over browser processes, profiles, downloads, permissions, and UI integration than a thin embedded-browser wrapper. It also creates a substantial build and upstream-maintenance burden. Memory use is not assumed to be lower than Chrome or Edge; it must be measured.
 
 See [docs/ENGINE_DECISION.md](docs/ENGINE_DECISION.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
