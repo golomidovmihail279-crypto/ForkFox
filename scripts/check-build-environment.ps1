@@ -46,10 +46,14 @@ try {
         }
 
         $freeGB = [math]::Round($drive.FreeSpace / 1GB, 1)
-        $fsOK = $drive.FileSystem -eq 'NTFS'
-        $spaceOK = $drive.FreeSpace -ge 100GB
-        $status = if (-not $fsOK -or -not $spaceOK) { 'FAIL' } else { 'PASS' }
-        Add-Check "Drive $($drive.DeviceID)" $status "File system: $($drive.FileSystem); free: $freeGB GB; media: $media"
+        Add-Check "Drive $($drive.DeviceID)" 'WARN' "File system: $($drive.FileSystem); free: $freeGB GB; media: $media"
+    }
+    $eligible = @($fixedDrives | Where-Object { $_.FileSystem -eq 'NTFS' -and $_.FreeSpace -ge 100GB })
+    if ($eligible.Count -gt 0) {
+        $eligibleText = ($eligible | ForEach-Object { "$($_.DeviceID) ($([math]::Round($_.FreeSpace / 1GB, 1)) GB free)" }) -join '; '
+        Add-Check 'Eligible Chromium build drive' 'PASS' $eligibleText
+    } else {
+        Add-Check 'Eligible Chromium build drive' 'FAIL' 'No fixed drive has both NTFS and at least 100 GB free.'
     }
 } catch {
     Add-Check 'Fixed drives' 'UNKNOWN' $_.Exception.Message
@@ -64,17 +68,19 @@ if (Test-Path $vswhere) {
         if ($vsInstallations.Count -eq 0) {
             Add-Check 'Visual Studio' 'FAIL' 'vswhere found no Visual Studio installations.'
         } else {
-            foreach ($vs in $vsInstallations) {
-                $version = [version]$vs.installationVersion
-                $status = if ($version -ge [version]'18.0.0') { 'PASS' } else { 'WARN' }
-                Add-Check 'Visual Studio installation' $status "$($vs.displayName), version $($vs.installationVersion), path $($vs.installationPath)"
+            $vs2026 = @($vsInstallations | Where-Object { [version]$_.installationVersion -ge [version]'18.0.0' })
+            if ($vs2026.Count -gt 0) {
+                Add-Check 'Visual Studio 2026+' 'PASS' (($vs2026 | ForEach-Object { "$($_.displayName) $($_.installationVersion) at $($_.installationPath)" }) -join '; ')
+            } else {
+                Add-Check 'Visual Studio 2026+' 'FAIL' 'Chromium currently requires Visual Studio 2026 (18.0.0) or newer.'
             }
 
             $requiredVs = & $vswhere -all -products '*' -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.ATLMFC -property installationPath 2>$null
-            if ($requiredVs) {
-                Add-Check 'Visual Studio C++ workload + MFC/ATL' 'PASS' ($requiredVs -join '; ')
+            $requiredVs2026 = @($requiredVs | Where-Object { $path = $_; $vs2026 | Where-Object { $_.installationPath -eq $path } })
+            if ($requiredVs2026.Count -gt 0) {
+                Add-Check 'Visual Studio C++ workload + MFC/ATL' 'PASS' ($requiredVs2026 -join '; ')
             } else {
-                Add-Check 'Visual Studio C++ workload + MFC/ATL' 'FAIL' 'No installation found with both Desktop development with C++ and MFC/ATL components.'
+                Add-Check 'Visual Studio C++ workload + MFC/ATL' 'FAIL' 'No Visual Studio 2026+ installation found with both Desktop development with C++ and MFC/ATL components.'
             }
         }
     } catch {
@@ -101,7 +107,7 @@ if (Test-Path $sdkInclude) {
 $cdb = Join-Path $kitsRoot 'Debuggers\x64\cdb.exe'
 if (Test-Path $cdb) {
     $cdbVersion = (Get-Item $cdb).VersionInfo.FileVersion
-    Add-Check 'Windows SDK Debugging Tools' 'PASS' "cdb.exe found; file version $cdbVersion. Confirm the installed package version is 10.0.26100.3323 or newer in Windows Installer."
+    Add-Check 'Windows SDK Debugging Tools' 'WARN' "cdb.exe found; file version $cdbVersion. Confirm the installed package version is 10.0.26100.3323 or newer in Windows Installer."
 } else {
     Add-Check 'Windows SDK Debugging Tools' 'FAIL' 'Debuggers\x64\cdb.exe not found. Chromium requires Windows SDK Debugging Tools 10.0.26100.3323 or newer.'
 }
