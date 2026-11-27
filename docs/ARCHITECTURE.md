@@ -1,76 +1,85 @@
 # Initial architecture
 
-Status: proposed foundation, subject to prototype validation
+Status: proposed architecture for a Firefox/Gecko-based ForkFox
 
-## Platform and language
+## Platform
 
 - Windows 11 x64.
-- Native Windows host, initially C++20 / Win32.
-- Microsoft Edge WebView2 SDK for web content.
-- Keep native browser chrome separate from web content so the browser UI does not require a second hidden web application.
-- Avoid Electron, Node.js, bundled Chromium, background daemons, and large UI frameworks in the first prototype.
+- Firefox source tree and Gecko browser platform as the base.
+- ForkFox branding, browser UI, settings, and gaming-oriented features developed as a maintained fork.
+- No Microsoft Edge, WebView2, or CEF runtime.
+
+Windows system APIs will still be used for ordinary desktop integration. This is unavoidable for a Windows application and is separate from the browser engine choice.
 
 ## High-level components
 
-1. **Native shell** — main window, tabs, address bar, menus, sidebar, settings, keyboard shortcuts.
-2. **Web runtime adapter** — creates and manages WebView2 environments/controllers; hides WebView2-specific details from the rest of the app.
-3. **Profile manager** — separate local data directories and WebView2 profile contexts; no cloud sync.
-4. **Navigation/security layer** — URL validation, popup policy, request filtering, download handling, phishing-warning integration.
-5. **Privacy/filter engine** — local filter lists, request classification, per-site allowlist, update scheduler that sleeps when idle.
-6. **Credential vault** — encrypted records, master-password flow, OS-protected key material, import/export.
+1. **Gecko browser platform** — rendering, JavaScript, networking, media, sandboxing, accessibility, and web standards.
+2. **ForkFox browser chrome** — tabs, address bar, navigation, sidebar, menus, settings, and start page.
+3. **Profile manager** — separate profile directories, cookies, site storage, settings, bookmarks, and credentials.
+4. **Navigation/security layer** — URL handling, permissions, popup policy, certificate errors, and safe browsing integration.
+5. **Privacy/filter layer** — request filtering, local filter lists, per-site allowlist, and update scheduling.
+6. **Credential vault** — encrypted records, master-password flow, safe import/export.
 7. **Session recovery** — crash-only recovery journal; normal close clears the recovery marker.
-8. **Gaming controller** — optional process detection and low-priority background scheduling; no game injection.
-9. **Settings store** — small versioned local configuration file.
-10. **Update checker** — optional notification-only check; installation requires user approval.
+8. **Gaming controller** — optional game detection and background scheduling; no injection into games.
+9. **Settings store** — versioned local configuration.
+10. **Update mechanism** — notification-only updates; installation requires user approval. Engine updates must remain timely for security.
 
 ## Resource rules
 
-- No periodic polling when there is no work to do.
-- Prefer event-driven APIs and OS notifications.
+- No unnecessary background polling or helper services.
+- Prefer event-driven APIs.
 - No telemetry by default.
-- No background task should keep a profile or renderer alive without a user-visible reason.
-- Defer noncritical work while a detected game is active.
-- Measure each feature's memory/CPU cost before enabling it by default.
-- Do not spawn a separate process for a feature that can safely live in the native host.
+- Do not remove security or sandboxing features to lower RAM.
+- Defer noncritical work while a game is active.
+- Measure the process tree and actual memory use; do not assume fewer processes always means lower or safer usage.
+- Keep optional UI features disabled by default.
+- Remove upstream browser components only after dependency and security review.
 
 ## Security rules
 
-- Web content must remain sandboxed by the browser runtime; do not disable WebView2 security features to gain performance.
-- Never expose native host objects to arbitrary websites.
-- Use strict origin checks for any host/web messaging.
+- Preserve Gecko's site isolation and sandboxing protections.
+- Never expose privileged browser interfaces to arbitrary websites.
 - Keep profile storage separated.
 - Store secrets encrypted at rest; never log passwords, cookies, tokens, or raw imported CSV data.
 - Treat imported files and filter lists as untrusted input.
 - Verify update signatures and package integrity before offering installation.
+- Track upstream Firefox security releases and establish a patch/merge cadence before public release.
 
 ## Implementation sequence
 
-### Phase 0 — foundation
-- Native Win32 window and WebView2 initialization.
-- Runtime detection and helpful missing-runtime message.
-- One tab, address bar, navigation, and clean shutdown.
-- Resource benchmark harness and baseline report.
+### Phase 0 — source and build feasibility
+- Pin an upstream Firefox source revision.
+- Read Mozilla's current Windows build requirements.
+- Build an unmodified upstream browser locally to verify toolchain and environment.
+- Record build time, disk use, idle RAM/CPU, and process tree.
+- Document the upstream update and security-patching workflow.
 
-### Phase 1 — browser basics
-- Multi-tab and multi-window management.
+### Phase 1 — ForkFox identity and browser shell
+- Establish ForkFox branding and product defaults.
+- Implement the initial tab/address-bar/navigation experience using supported Firefox platform architecture.
+- Keep the initial UI minimal.
+- Re-measure against the unmodified baseline.
+
+### Phase 2 — browser basics
+- Multi-tab and multi-window behavior.
 - Search provider selection.
 - Configurable start page, bookmarks, theme, and shortcuts.
 - Download manager.
 
-### Phase 2 — privacy and profiles
+### Phase 3 — privacy and profiles
 - Profile isolation.
 - Ad/tracker blocking and popup policy.
 - Clear-on-exit controls.
 - Crash-only session recovery.
 - Phishing protection after provider and licensing review.
 
-### Phase 3 — credentials and backup
+### Phase 4 — credentials and backup
 - Encrypted password vault.
 - Chrome/Firefox import and encrypted export.
 - Encrypted profile backup/restore.
 - Security review before release.
 
-### Phase 4 — optional gaming and quality-of-life features
+### Phase 5 — optional gaming and quality-of-life features
 - Game detection and Gaming Mode.
 - Performance monitor.
 - Translation, reader mode, picture-in-picture.
@@ -78,7 +87,8 @@ Status: proposed foundation, subject to prototype validation
 
 ## Build and repository policy
 
-- No GitHub Actions during normal development.
-- Build locally with documented Visual Studio Build Tools / Windows SDK requirements.
-- Use a separate development branch and review before merging to main.
-- Consider GitHub Actions only for the final EXE/installer build after explicit user approval.
+- Do not use GitHub Actions during normal development.
+- Follow Mozilla's supported Windows build toolchain.
+- Keep upstream source changes isolated and documented.
+- Maintain a repeatable process for rebasing security fixes.
+- Consider GitHub Actions only for the final installer/EXE build after explicit user approval.
